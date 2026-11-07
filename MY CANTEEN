@@ -1,0 +1,380 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#087443">
+<title>Canteen Khata</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f0f7f2;
+  color:#183b2b;
+}
+header{
+  background:#087443;
+  color:white;
+  padding:22px 16px;
+  text-align:center;
+}
+header h2{margin:0}
+nav{
+  display:flex;
+  background:white;
+  position:sticky;
+  top:0;
+}
+nav button{
+  flex:1;
+  padding:14px 5px;
+  border:0;
+  background:white;
+  color:#087443;
+  font-weight:bold;
+}
+nav button.active{
+  background:#087443;
+  color:white;
+}
+main{padding:15px;max-width:650px;margin:auto}
+.section{display:none}
+.section.active{display:block}
+.card{
+  background:white;
+  padding:16px;
+  margin-bottom:15px;
+  border-radius:12px;
+  box-shadow:0 2px 8px #0001;
+}
+h3{color:#087443;margin-top:0}
+input,select{
+  width:100%;
+  padding:12px;
+  margin:7px 0 13px;
+  border:1px solid #cbd9ce;
+  border-radius:8px;
+  font-size:16px;
+}
+label{font-weight:bold;font-size:14px}
+.mainbtn{
+  width:100%;
+  padding:13px;
+  border:0;
+  border-radius:8px;
+  background:#087443;
+  color:white;
+  font-size:16px;
+  font-weight:bold;
+}
+.item{
+  padding:12px;
+  border-bottom:1px solid #ddd;
+}
+.small{font-size:13px;color:#607568}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>🌿 Canteen Khata</h2>
+  <p>Customer & Order Management</p>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('customers',this)">Customers</button>
+  <button onclick="showTab('orders',this)">New Order</button>
+  <button onclick="showTab('history',this)">History</button>
+</nav>
+
+<main>
+
+<section id="customers" class="section active">
+
+<div class="card">
+<h3>Register New Customer</h3>
+
+<form id="customerForm">
+<label>Customer Name</label>
+<input id="customerName" required placeholder="Enter customer name">
+
+<label>Phone Number</label>
+<input id="customerPhone" placeholder="Enter phone number">
+
+<button class="mainbtn" type="submit">Save Customer</button>
+</form>
+</div>
+
+<div class="card">
+<h3>Customer List</h3>
+<input id="customerSearch" placeholder="Search customer..." oninput="renderCustomers()">
+<div id="customerList"></div>
+</div>
+
+</section>
+
+<section id="orders" class="section">
+
+<div class="card">
+<h3>Create New Order</h3>
+
+<form id="orderForm">
+
+<label>Select Customer</label>
+<select id="orderCustomer" required>
+<option value="">Select Customer</option>
+</select>
+
+<label>Order Date</label>
+<input type="date" id="orderDate" required>
+
+<label>Product</label>
+<select id="product" onchange="updatePrice()">
+<option value="Banana Shake">Banana Shake</option>
+<option value="Banana with Dates Shake">Banana with Dates Shake</option>
+<option value="Dates Shake">Dates Shake</option>
+</select>
+
+<label>Size</label>
+<select id="size" onchange="updatePrice()">
+<option value="Medium">Medium</option>
+<option value="Large">Large</option>
+</select>
+
+<label>Quantity</label>
+<input type="number" id="quantity" min="1" value="1" required>
+
+<label>Price per item (Rs.)</label>
+<input type="number" id="price" min="0" required>
+
+<label>Payment Status</label>
+<select id="payment">
+<option>Unpaid</option>
+<option>Paid</option>
+</select>
+
+<label>Delivery Status</label>
+<select id="delivery">
+<option>Pending</option>
+<option>Delivered</option>
+</select>
+
+<button class="mainbtn" type="submit">Save Order</button>
+</form>
+</div>
+
+</section>
+
+<section id="history" class="section">
+<div class="card">
+<h3>Order History</h3>
+<input id="historySearch" placeholder="Search customer or product..." oninput="renderHistory()">
+<div id="historyList"></div>
+</div>
+</section>
+
+</main>
+
+<script>
+const KEY="canteen_khata_green_v2";
+
+let data={customers:[],orders:[]};
+
+try{
+  const saved=localStorage.getItem(KEY);
+  if(saved) data=JSON.parse(saved);
+}catch(e){
+  alert("Storage could not be read.");
+}
+
+function saveData(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(data));
+  }catch(e){
+    alert("Could not save data. Check browser storage.");
+  }
+}
+
+function today(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+document.getElementById("orderDate").value=today();
+
+function showTab(id,btn){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  btn.classList.add("active");
+  renderCustomers();
+  updateCustomerOptions();
+  renderHistory();
+}
+
+document.getElementById("customerForm").addEventListener("submit",function(e){
+  e.preventDefault();
+
+  const name=document.getElementById("customerName").value.trim();
+  const phone=document.getElementById("customerPhone").value.trim();
+
+  if(!name)return;
+
+  const id="C-"+String(Date.now()).slice(-7);
+
+  data.customers.push({id,name,phone});
+  saveData();
+
+  this.reset();
+  renderCustomers();
+  updateCustomerOptions();
+
+  alert("Customer saved successfully! ID: "+id);
+});
+
+function renderCustomers(){
+  const search=document.getElementById("customerSearch").value.toLowerCase();
+  const box=document.getElementById("customerList");
+
+  box.innerHTML="";
+
+  data.customers.filter(c=>
+    c.name.toLowerCase().includes(search)||
+    c.phone.toLowerCase().includes(search)||
+    c.id.toLowerCase().includes(search)
+  ).forEach(c=>{
+    const orders=data.orders.filter(o=>o.customerId===c.id);
+    const total=orders.reduce((sum,o)=>sum+o.total,0);
+    const paid=orders.filter(o=>o.payment==="Paid").reduce((sum,o)=>sum+o.total,0);
+
+    box.innerHTML+=`
+      <div class="item">
+        <b>${escapeHTML(c.name)}</b><br>
+        <span class="small">${c.id} | ${escapeHTML(c.phone)}</span><br>
+        Purchases: Rs. ${total} |
+        Paid: Rs. ${paid} |
+        Balance: Rs. ${total-paid}
+      </div>`;
+  });
+
+  if(!box.innerHTML)box.innerHTML="No customers found.";
+}
+
+function updateCustomerOptions(){
+  const select=document.getElementById("orderCustomer");
+  const current=select.value;
+
+  select.innerHTML='<option value="">Select Customer</option>';
+
+  data.customers.forEach(c=>{
+    const option=document.createElement("option");
+    option.value=c.id;
+    option.textContent=c.name+" ("+c.id+")";
+    select.appendChild(option);
+  });
+
+  select.value=current;
+}
+
+const prices={
+  "Banana Shake":{Medium:100,Large:150},
+  "Banana with Dates Shake":{Medium:150,Large:200},
+  "Dates Shake":{Medium:200,Large:250}
+};
+
+function updatePrice(){
+  const p=document.getElementById("product").value;
+  const s=document.getElementById("size").value;
+  document.getElementById("price").value=prices[p][s];
+}
+
+updatePrice();
+
+document.getElementById("orderForm").addEventListener("submit",function(e){
+  e.preventDefault();
+
+  const customerId=document.getElementById("orderCustomer").value;
+  const customer=data.customers.find(c=>c.id===customerId);
+
+  if(!customer){
+    alert("Please register and select a customer first.");
+    return;
+  }
+
+  const qty=Number(document.getElementById("quantity").value);
+  const price=Number(document.getElementById("price").value);
+
+  if(qty<1||price<0){
+    alert("Enter valid quantity and price.");
+    return;
+  }
+
+  const order={
+    id:"O-"+Date.now(),
+    customerId,
+    date:document.getElementById("orderDate").value,
+    product:document.getElementById("product").value,
+    size:document.getElementById("size").value,
+    qty,
+    price,
+    total:qty*price,
+    payment:document.getElementById("payment").value,
+    delivery:document.getElementById("delivery").value
+  };
+
+  data.orders.push(order);
+  saveData();
+
+  alert("Order saved successfully!");
+  this.reset();
+  document.getElementById("orderDate").value=today();
+  updatePrice();
+  updateCustomerOptions();
+  renderHistory();
+});
+
+function renderHistory(){
+  const search=document.getElementById("historySearch").value.toLowerCase();
+  const box=document.getElementById("historyList");
+
+  box.innerHTML="";
+
+  data.orders.slice().reverse().filter(o=>{
+    const c=data.customers.find(x=>x.id===o.customerId);
+    return c && (
+      c.name.toLowerCase().includes(search)||
+      o.product.toLowerCase().includes(search)
+    );
+  }).forEach(o=>{
+    const c=data.customers.find(x=>x.id===o.customerId);
+
+    box.innerHTML+=`
+      <div class="item">
+        <b>${escapeHTML(c.name)}</b> - ${o.date}<br>
+        ${escapeHTML(o.product)} (${o.size}) × ${o.qty}<br>
+        Total: Rs. ${o.total}<br>
+        Payment: ${o.payment} | Delivery: ${o.delivery}
+      </div>`;
+  });
+
+  if(!box.innerHTML)box.innerHTML="No orders found.";
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+renderCustomers();
+updateCustomerOptions();
+renderHistory();
+</script>
+
+</body>
+</html>
